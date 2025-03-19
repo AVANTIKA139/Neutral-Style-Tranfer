@@ -5,16 +5,14 @@ from PIL import Image
 import gradio as gr
 
 # ✅ Load and preprocess the images
-# ✅ Load and preprocess the images
 def load_and_process_image(image_path):
-    max_dim = 256  # Resize image to 512 pixels max
-    img = Image.open(image_path)
-    img = img.resize((max_dim, max_dim))  # Removed Image.ANTIALIAS
-    img = np.array(img, dtype=np.float32)  # Convert to NumPy array
+    max_dim = 512
+    img = Image.open(image_path).convert('RGB')  # Convert to RGB to avoid issues
+    img = img.resize((max_dim, max_dim), Image.ANTIALIAS)
+    img = np.array(img, dtype=np.float32)
     img = np.expand_dims(img, axis=0)  # Add batch dimension
     img = tf.keras.applications.vgg19.preprocess_input(img)  # Normalize for VGG19
     return img
-
 
 # ✅ Display helper function
 def deprocess_image(img):
@@ -27,7 +25,7 @@ def deprocess_image(img):
 def get_model():
     vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
     vgg.trainable = False  # Freeze model
-    style_layers = ['block1_conv1', 'block2_conv1']
+    style_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1', 'block4_conv1', 'block5_conv1']
     content_layers = ['block5_conv2']
     selected_layers = style_layers + content_layers
     outputs = [vgg.get_layer(name).output for name in selected_layers]
@@ -85,8 +83,7 @@ def run_style_transfer(content_path, style_path, epochs=500, lr=5e-4):
     generated_image = tf.Variable(content_image, dtype=tf.float32)
 
     # Optimizer
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)  # Increased from 5e-4
-
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
     # Training function
     @tf.function
@@ -129,4 +126,4 @@ interface = gr.Interface(
 )
 
 if __name__ == "__main__":
-    interface.launch(share=True)
+    interface.launch()
